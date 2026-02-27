@@ -1,4 +1,4 @@
-# Data Analyst Agent
+# Data Agent
 
 An AI-powered data analysis tool that lets you analyze CSV files using natural language queries. Upload a CSV, ask a question, and get insights with visualizations.
 
@@ -20,7 +20,7 @@ An AI-powered data analysis tool that lets you analyze CSV files using natural l
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd data_analyst_agent
+cd data_agent
 
 # Install dependencies
 pip install -r requirements.txt
@@ -54,7 +54,7 @@ python main.py analyze data.csv "What is the average salary by department?"
 ## Project Structure
 
 ```
-data_analyst_agent/
+data_agent/
 ├── app.py           # Streamlit web UI
 ├── main.py          # CLI entry point
 ├── agent.py         # Agent loop (CLI mode)
