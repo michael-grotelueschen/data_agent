@@ -1,10 +1,22 @@
 """Claude API wrapper and tool definitions."""
 
+import logging
 import os
 import time
 from typing import Any
 
 import anthropic
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("agent.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """You are a data analyst agent. You help users analyze CSV data by writing and executing Python code.
@@ -109,6 +121,9 @@ class LLMClient:
 
         for attempt in range(self.max_retries):
             try:
+                logger.info(f"API call: model={self.model}, messages={len(messages)}, attempt={attempt + 1}")
+                start_time = time.time()
+
                 response = self.client.messages.create(
                     model=self.model,
                     max_tokens=4096,
@@ -116,18 +131,32 @@ class LLMClient:
                     tools=TOOLS,
                     messages=messages
                 )
+
+                latency = time.time() - start_time
+                logger.info(
+                    f"API response: "
+                    f"input_tokens={response.usage.input_tokens}, "
+                    f"output_tokens={response.usage.output_tokens}, "
+                    f"latency={latency:.2f}s, "
+                    f"stop_reason={response.stop_reason}"
+                )
+
                 return response
-            except anthropic.RateLimitError:
+            except anthropic.RateLimitError as e:
+                logger.warning(f"Rate limit hit: {e}, attempt {attempt + 1}/{self.max_retries}")
                 if attempt < self.max_retries - 1:
                     wait_time = 2 ** attempt
                     time.sleep(wait_time)
                 else:
+                    logger.error(f"Rate limit exceeded after {self.max_retries} attempts")
                     raise
             except anthropic.APIError as e:
+                logger.error(f"API error: {e}, attempt {attempt + 1}/{self.max_retries}")
                 if attempt < self.max_retries - 1:
                     wait_time = 2 ** attempt
                     time.sleep(wait_time)
                 else:
+                    logger.error(f"API error after {self.max_retries} attempts: {e}")
                     raise
 
     def extract_tool_use(
@@ -146,6 +175,7 @@ class LLMClient:
         for block in response.content:
             if block.type == "tool_use":
                 tool_uses.append((block.id, block.name, block.input))
+                logger.info(f"Tool call: {block.name} (id={block.id})")
         return tool_uses
 
     def extract_text(self, response: anthropic.types.Message) -> str:

@@ -1,5 +1,6 @@
 """Streamlit app for the data analyst agent."""
 
+import logging
 import os
 import tempfile
 import time
@@ -9,6 +10,9 @@ import streamlit as st
 
 from executor import CodeExecutor, ExecutionResult
 from llm import LLMClient
+
+# Logger (uses config from llm.py)
+logger = logging.getLogger(__name__)
 
 # Limits
 MAX_FILE_SIZE_MB = 10
@@ -87,6 +91,7 @@ if uploaded_file and query:
 
         # Record this query
         record_query()
+        logger.info(f"New query: '{query}' on file: {uploaded_file.name}")
 
         # Save uploaded file to temp location
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
@@ -157,6 +162,7 @@ Please analyze this data to answer the user's question. Start by understanding t
                             st.code(code, language="python")
 
                         result = executor.execute(code)
+                        logger.info(f"Code execution: success={result.success}, figures={len(result.figures)}")
 
                         if result.success:
                             if result.output:
@@ -190,6 +196,7 @@ Please analyze this data to answer the user's question. Start by understanding t
                         figures.extend(viz)
 
                         status.update(label="Analysis complete!", state="complete")
+                        logger.info(f"Query complete: {len(figures)} figures generated")
 
                         # Display results
                         st.markdown("---")
