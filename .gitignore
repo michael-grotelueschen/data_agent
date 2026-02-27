@@ -1,0 +1,13 @@
+# Hidden files
+.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Output
+output/
+
+# Logs
+agent.log
