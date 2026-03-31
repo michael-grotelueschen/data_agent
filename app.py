@@ -15,7 +15,7 @@ from llm import LLMClient
 logger = logging.getLogger(__name__)
 
 # Limits
-MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_MB = 200
 MAX_QUERIES_PER_HOUR = 20
 RATE_LIMIT_WINDOW_SECONDS = 3600
 
@@ -64,15 +64,38 @@ def get_file_size_mb(file) -> float:
 st.title("📊 Data Agent")
 st.markdown("Upload a CSV file and ask questions in natural language.")
 
-# File upload
-uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+# Sample datasets
+SAMPLE_DATASETS = {
+    "Customer Churn": Path(__file__).parent / "data" / "customer_churn.csv",
+    "Ecommerce Orders": Path(__file__).parent / "data" / "ecommerce_orders.csv",
+}
 
-# File size check
-if uploaded_file:
-    file_size = get_file_size_mb(uploaded_file)
-    if file_size > MAX_FILE_SIZE_MB:
-        st.error(f"File too large: {file_size:.1f} MB (max {MAX_FILE_SIZE_MB} MB)")
-        uploaded_file = None
+# File source selection
+file_source = st.radio(
+    "Choose a data source:",
+    ["Upload your own CSV", "Use a sample dataset"],
+    horizontal=True,
+)
+
+uploaded_file = None
+csv_path = None
+
+if file_source == "Upload your own CSV":
+    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    if uploaded_file:
+        file_size = get_file_size_mb(uploaded_file)
+        if file_size > MAX_FILE_SIZE_MB:
+            st.error(f"File too large: {file_size:.1f} MB (max {MAX_FILE_SIZE_MB} MB)")
+            uploaded_file = None
+else:
+    dataset_name = st.selectbox("Select a sample dataset:", list(SAMPLE_DATASETS.keys()))
+    sample_path = SAMPLE_DATASETS[dataset_name]
+    if sample_path.exists():
+        csv_path = str(sample_path)
+    else:
+        st.error(f"Sample dataset not found: {sample_path}")
+
+has_data = uploaded_file is not None or csv_path is not None
 
 # Query input
 query = st.text_input(
@@ -81,7 +104,7 @@ query = st.text_input(
 )
 
 # Analyze button
-if uploaded_file and query:
+if has_data and query:
     if st.button("Analyze", type="primary"):
         # Check rate limit
         if not check_rate_limit():
@@ -91,12 +114,17 @@ if uploaded_file and query:
 
         # Record this query
         record_query()
-        logger.info(f"New query: '{query}' on file: {uploaded_file.name}")
 
-        # Save uploaded file to temp location
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
-            tmp.write(uploaded_file.getvalue())
-            csv_path = tmp.name
+        # Resolve CSV path
+        temp_csv = False
+        if uploaded_file is not None:
+            logger.info(f"New query: '{query}' on file: {uploaded_file.name}")
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+                tmp.write(uploaded_file.getvalue())
+                csv_path = tmp.name
+            temp_csv = True
+        else:
+            logger.info(f"New query: '{query}' on sample dataset: {csv_path}")
 
         try:
             # Initialize components
@@ -226,13 +254,14 @@ Please analyze this data to answer the user's question. Start by understanding t
             st.error(f"Error: {str(e)}")
 
         finally:
-            # Clean up temp file
-            try:
-                os.unlink(csv_path)
-            except:
-                pass
+            # Clean up temp file (only if we created one)
+            if temp_csv:
+                try:
+                    os.unlink(csv_path)
+                except:
+                    pass
 
-elif uploaded_file:
+elif has_data:
     st.info("Enter a query to analyze your data.")
 else:
-    st.info("Upload a CSV file to get started.")
+    st.info("Upload a CSV file or select a sample dataset to get started.")
