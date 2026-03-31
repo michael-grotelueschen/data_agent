@@ -21,7 +21,7 @@ RATE_LIMIT_WINDOW_SECONDS = 3600
 
 # Page config
 st.set_page_config(
-    page_title="Data Analyst Agent",
+    page_title="Data Agent",
     page_icon="📊",
     layout="wide"
 )
@@ -61,7 +61,7 @@ def get_file_size_mb(file) -> float:
 
 
 # Title
-st.title("📊 Data Analyst Agent")
+st.title("📊 Data Agent")
 st.markdown("Upload a CSV file and ask questions in natural language.")
 
 # File upload
