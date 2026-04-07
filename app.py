@@ -155,7 +155,7 @@ Please analyze this data to answer the user's question. Start by understanding t
             figures = []
 
             # Agent loop
-            max_iterations = 10
+            max_iterations = 100
             status = st.status("Analyzing...", expanded=True)
 
             for iteration in range(max_iterations):
